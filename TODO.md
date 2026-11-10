@@ -17,3 +17,5 @@
 - [ ] **UI responsif untuk desktop dan perangkat seluler dengan hierarki aksi yang jelas, status koneksi yang cepat dikenali, dan aksesibilitas dasar.** Kontrol memiliki label, focus state, dan layout mobile yang tetap terbaca.
 
 - [ ] **Peringatan keamanan yang terlihat jelas bahwa DID bukan wallet dan check-in tidak menjamin airdrop.** Peringatan harus hadir di dashboard tanpa klaim kelayakan token.
+
+- [ ] **Issue Log dan Issue Report `.txt`.** Pengguna dapat mencatat judul, severity, kategori, network, langkah reproduksi, expected/actual result, dampak, hash transaksi, request ID, dan catatan; laporan disimpan durable di database, secret otomatis direda​​ksi, dan file `.txt` dapat diunduh kapan saja.

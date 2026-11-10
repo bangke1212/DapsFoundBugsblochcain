@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import IssueLog from "@/app/issue-log";
 
 type Activity = { id: number; eventType: string; status: "success" | "error" | "info"; summary: string; nonce: number | null; createdAt: string };
 type Message = { id: string; author: string; text: string; timestamp: string | null; sequence: number | null };
@@ -136,6 +137,7 @@ export default function Home() {
           <a className="nav-item active" href="#overview"><Icon name="activity" size={16} /> Overview</a>
           <a className="nav-item" href="#identity"><Icon name="shield" size={16} /> Identity</a>
           <a className="nav-item" href="#activity"><Icon name="pulse" size={16} /> Activity</a>
+          <a className="nav-item" href="#issues"><Icon name="alert" size={16} /> Issues</a>
         </nav>
         <div className="sidebar-bottom">
           <div className="live-chip"><span className="live-dot" /> SYSTEM ONLINE</div>
@@ -180,6 +182,7 @@ export default function Home() {
 
         <section className="panel activity-panel" id="activity"><div className="panel-heading"><div><span className="eyebrow">04 / AUDIT TRAIL</span><h3>Recent activity</h3></div><span className="panel-code">NO SECRETS LOGGED</span></div>{lastActivity.length === 0 ? <div className="activity-empty">Belum ada aktivitas. Check-in pertama akan muncul di sini.</div> : <div className="activity-list">{lastActivity.map((item) => <div className="activity-row" key={item.id}><span className={`activity-icon ${item.status}`}><Icon name={item.status === "success" ? "check" : item.status === "error" ? "alert" : "clock"} size={14} /></span><div className="activity-copy"><strong>{item.eventType}</strong><span>{item.summary}</span></div><time>{formatTime(item.createdAt)}</time><span className={`activity-status ${item.status}`}>{item.status}</span></div>)}</div>}</section>
 
+        <IssueLog />
         <footer className="footer"><span>FLOP // BOT CONTROL CENTER</span><span>Server-side signing · No wallet custody · No airdrop guarantee</span></footer>
       </section>
       {toast && <div className={`toast ${toast.type}`} role="status"><span className="toast-icon"><Icon name={toast.type === "success" ? "check" : "alert"} size={15} /></span>{toast.text}</div>}
