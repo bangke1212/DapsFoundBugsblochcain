@@ -7,8 +7,18 @@ type Activity = { id: number; eventType: string; status: "success" | "error" | "
 type Message = { id: string; author: string; text: string; timestamp: string | null; sequence: number | null };
 type Settings = { enabled: boolean; schedule: string; room: string; message: string; lastNonce: number | null; updatedAt: string };
 type StatusData = { configured: boolean; did: string | null; technocore: { ok: boolean; latencyMs: number; error?: string }; settings: Settings; activities: Activity[]; warning: string };
+type View = "overview" | "identity" | "lobby" | "automation" | "activity" | "issues";
 
 type IconName = "pulse" | "shield" | "send" | "copy" | "refresh" | "clock" | "activity" | "arrow" | "alert" | "check" | "terminal";
+
+const navItems: { id: View; label: string; icon: IconName; eyebrow: string; title: string; description: string }[] = [
+  { id: "overview", label: "Overview", icon: "activity", eyebrow: "CONTROL / 01", title: "System overview", description: "Ringkasan kesehatan agen dan jaringan dalam satu tampilan." },
+  { id: "identity", label: "Identity & check-in", icon: "shield", eyebrow: "AGENT / 02", title: "Identity & check-in", description: "Kelola identitas publik dan kirim signed check-in." },
+  { id: "lobby", label: "Lobby pulse", icon: "terminal", eyebrow: "NETWORK / 03", title: "Lobby pulse", description: "Baca sinyal masuk dari room Technocore." },
+  { id: "automation", label: "Automation", icon: "clock", eyebrow: "AUTOMATION / 04", title: "Scheduled automation", description: "Atur frekuensi dan status check-in terjadwal." },
+  { id: "activity", label: "Activity", icon: "pulse", eyebrow: "AUDIT / 05", title: "Recent activity", description: "Telusuri jejak operasi tanpa menyimpan secret." },
+  { id: "issues", label: "Issue reports", icon: "alert", eyebrow: "FINDINGS / 06", title: "Issue log & reports", description: "Simpan temuan devnet dan unduh TXT atau Markdown." },
+];
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, ReactNode> = {
@@ -27,25 +37,12 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
-function formatTime(value: string | null | undefined) {
-  if (!value) return "—";
-  try { return new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }).format(new Date(value)); } catch { return value; }
-}
-
-function shortDid(did: string | null) {
-  if (!did) return "Belum tersedia";
-  return `${did.slice(0, 22)}…${did.slice(-8)}`;
-}
-
-function scheduleCopy(value: string) {
-  if (value === "*/30 * * * *") return "Setiap 30 menit · UTC";
-  if (value === "0 * * * *") return "Setiap jam · UTC";
-  if (value === "0 */6 * * *") return "Setiap 6 jam · UTC";
-  if (value === "0 8 * * *") return "Setiap hari pukul 08:00 · UTC";
-  return `${value} · UTC`;
-}
+function formatTime(value: string | null | undefined) { if (!value) return "—"; try { return new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }).format(new Date(value)); } catch { return value; } }
+function shortDid(did: string | null) { if (!did) return "Belum tersedia"; return `${did.slice(0, 22)}…${did.slice(-8)}`; }
+function scheduleCopy(value: string) { if (value === "*/30 * * * *") return "Setiap 30 menit · UTC"; if (value === "0 * * * *") return "Setiap jam · UTC"; if (value === "0 */6 * * *") return "Setiap 6 jam · UTC"; if (value === "0 8 * * *") return "Setiap hari pukul 08:00 · UTC"; return `${value} · UTC`; }
 
 export default function Home() {
+  const [view, setView] = useState<View>("overview");
   const [status, setStatus] = useState<StatusData | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [room, setRoom] = useState("lobby");
@@ -55,137 +52,52 @@ export default function Home() {
   const [busy, setBusy] = useState<"checkin" | "lobby" | "schedule" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const activeMeta = navItems.find((item) => item.id === view) ?? navItems[0];
   const loadDashboard = async () => {
     try {
       const [statusResponse, lobbyResponse] = await Promise.all([fetch("/api/status"), fetch("/api/lobby")]);
       const nextStatus = await statusResponse.json() as StatusData;
       const nextLobby = await lobbyResponse.json() as { messages?: Message[] };
-      setStatus(nextStatus);
-      setMessages(nextLobby.messages ?? []);
-      setRoom(nextStatus.settings.room);
-      setMessage(nextStatus.settings.message);
-      setSchedule(nextStatus.settings.schedule);
-      setScheduleEnabled(nextStatus.settings.enabled);
-    } catch {
-      setToast({ type: "error", text: "Dashboard belum dapat memuat data. Coba refresh." });
-    }
+      setStatus(nextStatus); setMessages(nextLobby.messages ?? []); setRoom(nextStatus.settings.room); setMessage(nextStatus.settings.message); setSchedule(nextStatus.settings.schedule); setScheduleEnabled(nextStatus.settings.enabled);
+    } catch { setToast({ type: "error", text: "Dashboard belum dapat memuat data. Coba refresh." }); }
   };
-
-  useEffect(() => { void loadDashboard(); }, []);
 
   useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(() => setToast(null), 4200);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+    void loadDashboard();
+    const onHash = () => { const next = window.location.hash.slice(1) as View; if (navItems.some((item) => item.id === next)) setView(next); };
+    onHash(); window.addEventListener("hashchange", onHash); return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(null), 4200); return () => window.clearTimeout(timer); }, [toast]);
 
-  const runCheckIn = async () => {
-    setBusy("checkin");
-    try {
-      const response = await fetch("/api/check-in", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ room, message }) });
-      const result = await response.json() as { ok?: boolean; error?: string; message?: string };
-      if (!response.ok || !result.ok) throw new Error(result.error ?? "Check-in gagal.");
-      setToast({ type: "success", text: result.message ?? "Check-in berhasil diterima Technocore." });
-      await loadDashboard();
-    } catch (error) {
-      setToast({ type: "error", text: error instanceof Error ? error.message : "Check-in gagal." });
-    } finally { setBusy(null); }
-  };
-
-  const refreshLobby = async () => {
-    setBusy("lobby");
-    try {
-      const response = await fetch("/api/lobby", { cache: "no-store" });
-      const result = await response.json() as { messages?: Message[]; error?: string };
-      if (!response.ok) throw new Error(result.error ?? "Lobby tidak dapat dimuat.");
-      setMessages(result.messages ?? []);
-    } catch (error) {
-      setToast({ type: "error", text: error instanceof Error ? error.message : "Lobby tidak dapat dimuat." });
-    } finally { setBusy(null); }
-  };
-
-  const saveSchedule = async (nextEnabled = scheduleEnabled) => {
-    setBusy("schedule");
-    try {
-      const response = await fetch("/api/schedule", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: nextEnabled, schedule, room, message }) });
-      const result = await response.json() as { ok?: boolean; error?: string; settings?: Settings };
-      if (!response.ok || !result.ok) throw new Error(result.error ?? "Jadwal gagal disimpan.");
-      setScheduleEnabled(nextEnabled);
-      setToast({ type: "success", text: nextEnabled ? "Check-in terjadwal diaktifkan." : "Check-in terjadwal dijeda." });
-      if (result.settings && status) setStatus({ ...status, settings: { ...status.settings, ...result.settings } });
-    } catch (error) {
-      setToast({ type: "error", text: error instanceof Error ? error.message : "Jadwal gagal disimpan." });
-    } finally { setBusy(null); }
-  };
-
-  const copyDid = async () => {
-    if (!status?.did) return;
-    await navigator.clipboard.writeText(status.did);
-    setToast({ type: "success", text: "DID publik disalin." });
-  };
+  const navigate = (next: View) => { setView(next); window.history.replaceState(null, "", `#${next}`); };
+  const runCheckIn = async () => { setBusy("checkin"); try { const response = await fetch("/api/check-in", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ room, message }) }); const result = await response.json() as { ok?: boolean; error?: string; message?: string }; if (!response.ok || !result.ok) throw new Error(result.error ?? "Check-in gagal."); setToast({ type: "success", text: result.message ?? "Check-in berhasil diterima Technocore." }); await loadDashboard(); } catch (error) { setToast({ type: "error", text: error instanceof Error ? error.message : "Check-in gagal." }); } finally { setBusy(null); } };
+  const refreshLobby = async () => { setBusy("lobby"); try { const response = await fetch("/api/lobby", { cache: "no-store" }); const result = await response.json() as { messages?: Message[]; error?: string }; if (!response.ok) throw new Error(result.error ?? "Lobby tidak dapat dimuat."); setMessages(result.messages ?? []); } catch (error) { setToast({ type: "error", text: error instanceof Error ? error.message : "Lobby tidak dapat dimuat." }); } finally { setBusy(null); } };
+  const saveSchedule = async (nextEnabled = scheduleEnabled) => { setBusy("schedule"); try { const response = await fetch("/api/schedule", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: nextEnabled, schedule, room, message }) }); const result = await response.json() as { ok?: boolean; error?: string; settings?: Settings }; if (!response.ok || !result.ok) throw new Error(result.error ?? "Jadwal gagal disimpan."); setScheduleEnabled(nextEnabled); setToast({ type: "success", text: nextEnabled ? "Check-in terjadwal diaktifkan." : "Check-in terjadwal dijeda." }); if (result.settings && status) setStatus({ ...status, settings: { ...status.settings, ...result.settings } }); } catch (error) { setToast({ type: "error", text: error instanceof Error ? error.message : "Jadwal gagal disimpan." }); } finally { setBusy(null); } };
+  const copyDid = async () => { if (!status?.did) return; await navigator.clipboard.writeText(status.did); setToast({ type: "success", text: "DID publik disalin." }); };
 
   const lastActivity = useMemo(() => status?.activities ?? [], [status]);
-  const botReady = Boolean(status?.configured);
-  const connected = Boolean(status?.technocore.ok);
+  const botReady = Boolean(status?.configured); const connected = Boolean(status?.technocore.ok);
+  const metrics = <div className="metrics" aria-label="Ringkasan status"><div className="metric-card"><span className="metric-label">BOT STATUS</span><div className="metric-value"><span className={`big-dot ${botReady ? "green" : "amber"}`} />{botReady ? "Ready" : "Setup required"}</div><span className="metric-note">{botReady ? "Identity loaded securely" : "Server secret belum tersedia"}</span></div><div className="metric-card"><span className="metric-label">TECHNOCORE</span><div className="metric-value"><span className={`big-dot ${connected ? "green" : "red"}`} />{connected ? "Connected" : "Unreachable"}</div><span className="metric-note">{connected ? `${status?.technocore.latencyMs ?? 0}ms response` : status?.technocore.error ?? "Menunggu pemeriksaan"}</span></div><div className="metric-card"><span className="metric-label">LAST NONCE</span><div className="metric-value mono">{status?.settings.lastNonce ?? "—"}</div><span className="metric-note">Naik untuk setiap signed message</span></div></div>;
+  const setupBanner = !botReady && <div className="setup-banner"><div className="banner-icon"><Icon name="alert" size={19} /></div><div><strong>Bot belum dikonfigurasi</strong><p>Tambahkan <code>SIGN_SEED</code> sebagai server-only environment variable di Netlify/Vercel. Nilai ini tidak pernah dibaca dari browser.</p></div><span className="banner-tag">ACTION NEEDED</span></div>;
+  const identityPanel = <section className="panel identity-panel"><div className="panel-heading"><div><span className="eyebrow">01 / PUBLIC IDENTITY</span><h3>Agent identity</h3></div><span className="panel-code">ED25519</span></div><div className="did-block"><span className="field-label">DID PUBLIC KEY</span><div className="did-row"><code>{shortDid(status?.did ?? null)}</code><button className="icon-button" onClick={copyDid} disabled={!status?.did} aria-label="Salin DID publik"><Icon name="copy" size={16} /></button></div><p>Identitas ini dapat dibagikan. Seed privat tidak pernah ditampilkan.</p></div><div className="identity-footer"><div><span className="field-label">NETWORK</span><strong>Technocore / lobby</strong></div><div><span className="field-label">SIGNING</span><strong><span className="mini-dot green" /> Server-side only</strong></div></div></section>;
+  const checkinPanel = <section className="panel checkin-panel"><div className="panel-heading"><div><span className="eyebrow">02 / OUTBOUND SIGNAL</span><h3>Send check-in</h3></div><span className="panel-code">SIGNED GET</span></div><p className="panel-intro">Kirim pesan yang ditandatangani oleh DID agen ke room Technocore.</p><div className="form-row"><label><span className="field-label">ROOM</span><input value={room} onChange={(event) => setRoom(event.target.value)} placeholder="lobby" /></label><label className="grow"><span className="field-label">MESSAGE</span><input value={message} maxLength={4096} onChange={(event) => setMessage(event.target.value)} placeholder="FLOP agent check-in" /></label></div><div className="action-row"><span className="hint"><span className="mini-dot" /> Nonce otomatis dikelola server</span><button className="primary-button" onClick={runCheckIn} disabled={busy !== null || !botReady}><span>{busy === "checkin" ? "Signing & sending…" : "Run signed check-in"}</span><Icon name="arrow" size={16} /></button></div></section>;
+  const lobbyPanel = <section className="panel lobby-panel"><div className="panel-heading"><div><span className="eyebrow">03 / INBOUND SIGNAL</span><h3>Lobby pulse</h3></div><button className="text-button" onClick={refreshLobby} disabled={busy !== null}><Icon name="refresh" size={14} /> {busy === "lobby" ? "Refreshing" : "Refresh"}</button></div>{messages.length === 0 ? <div className="empty-state"><span className="empty-mark"><Icon name="terminal" size={22} /></span><strong>Belum ada pesan untuk ditampilkan</strong><p>Lobby kosong atau belum dapat dimuat dari Technocore.</p></div> : <div className="message-list">{messages.slice(-10).reverse().map((item) => <article className="message" key={item.id}><div className="message-avatar">{item.author.slice(0, 1).toUpperCase()}</div><div className="message-body"><div><strong>{item.author}</strong><time>{formatTime(item.timestamp)}</time></div><p>{item.text}</p></div></article>)}</div>}</section>;
+  const schedulePanel = <section className="panel schedule-panel"><div className="panel-heading"><div><span className="eyebrow">AUTOMATION</span><h3>Scheduled check-in</h3></div><span className={`toggle-state ${scheduleEnabled ? "on" : ""}`}>{scheduleEnabled ? "ON" : "OFF"}</span></div><p className="panel-intro">Jadwal memanggil endpoint bot secara berkala. Eksekusi hanya berjalan saat toggle aktif.</p><button className={`toggle ${scheduleEnabled ? "active" : ""}`} onClick={() => void saveSchedule(!scheduleEnabled)} disabled={busy === "schedule"} aria-pressed={scheduleEnabled}><span className="toggle-knob" /><span>{scheduleEnabled ? "Automation active" : "Automation paused"}</span></button><label className="select-label"><span className="field-label">FREQUENCY</span><select value={schedule} onChange={(event) => setSchedule(event.target.value)}><option value="*/30 * * * *">Every 30 minutes</option><option value="0 * * * *">Every hour</option><option value="0 */6 * * *">Every 6 hours</option><option value="0 8 * * *">Daily · 08:00 UTC</option></select></label><div className="next-run"><span className="field-label">NEXT EXECUTION</span><strong><Icon name="clock" size={15} /> {scheduleCopy(schedule)}</strong></div><button className="secondary-button" onClick={() => void saveSchedule()} disabled={busy !== null}>{busy === "schedule" ? "Saving…" : "Save schedule"}</button></section>;
+  const securityPanel = <section className="panel security-panel"><div className="security-top"><div className="security-icon"><Icon name="shield" size={18} /></div><span className="eyebrow">SECURITY NOTE</span></div><h3>Keep the key, keep the identity.</h3><p><strong>DID bukan wallet address.</strong> Check-in juga tidak menjamin kelayakan atau pemberian $FLOP airdrop.</p><div className="security-rule" /><span className="security-foot"><Icon name="check" size={14} /> Seed tidak pernah dikirim ke client</span></section>;
+  const connectionPanel = <section className="panel connection-panel"><span className="eyebrow">SERVICE LINK</span><div className="service-line"><span className={`service-status ${connected ? "connected" : ""}`} /><div><strong>technocore.chat</strong><small>{connected ? "Operational · public endpoint" : "Health check failed"}</small></div><Icon name="arrow" size={15} /></div></section>;
+  const activityPanel = <section className="panel activity-panel"><div className="panel-heading"><div><span className="eyebrow">05 / AUDIT TRAIL</span><h3>Recent activity</h3></div><span className="panel-code">NO SECRETS LOGGED</span></div>{lastActivity.length === 0 ? <div className="activity-empty">Belum ada aktivitas. Check-in pertama akan muncul di sini.</div> : <div className="activity-list">{lastActivity.map((item) => <div className="activity-row" key={item.id}><span className={`activity-icon ${item.status}`}><Icon name={item.status === "success" ? "check" : item.status === "error" ? "alert" : "clock"} size={14} /></span><div className="activity-copy"><strong>{item.eventType}</strong><span>{item.summary}</span></div><time>{formatTime(item.createdAt)}</time><span className={`activity-status ${item.status}`}>{item.status}</span></div>)}</div>}</section>;
 
-  return (
-    <main className="shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark"><span /></span><span>FLOP <b>//</b> BOT</span></div>
-        <div className="side-caption">AGENT CONTROL / 01</div>
-        <nav className="nav" aria-label="Navigasi dashboard">
-          <a className="nav-item active" href="#overview"><Icon name="activity" size={16} /> Overview</a>
-          <a className="nav-item" href="#identity"><Icon name="shield" size={16} /> Identity</a>
-          <a className="nav-item" href="#activity"><Icon name="pulse" size={16} /> Activity</a>
-          <a className="nav-item" href="#issues"><Icon name="alert" size={16} /> Issues</a>
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="live-chip"><span className="live-dot" /> SYSTEM ONLINE</div>
-          <p>Bot bekerja melalui signed HTTP request. Secret tetap berada di server.</p>
-          <div className="version"><span>v0.1 MVP</span><span>LOCAL / VERCEL</span></div>
-        </div>
-      </aside>
-
-      <section className="content" id="overview">
-        <header className="topbar">
-          <div><span className="eyebrow">FLOP LABS / TECHNОCORE</span><h1>Agent control center</h1></div>
-          <div className="topbar-meta"><span className={`status-pill ${connected ? "ok" : "warn"}`}><span className="status-dot" /> {connected ? "Technocore connected" : "Connection check"}</span><span className="utc">UTC · {new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(new Date())}</span></div>
-        </header>
-
-        <div className="hero-line"><div><p className="kicker">YOUR AGENT, VISIBLE.</p><h2>Semua sinyal penting,<br /><em>di satu tempat.</em></h2><p className="hero-copy">Pantau identitas agen, kirim check-in yang ditandatangani, dan lihat aktivitas Technocore tanpa menyentuh secret key.</p></div><div className="hero-readout"><span>CONTROL STATUS</span><strong>{botReady ? "READY" : "SETUP REQUIRED"}</strong><small>{botReady ? "Seed server terhubung" : "Tambahkan SIGN_SEED di environment"}</small></div></div>
-
-        {!botReady && <div className="setup-banner"><div className="banner-icon"><Icon name="alert" size={19} /></div><div><strong>Bot belum dikonfigurasi</strong><p>Tambahkan <code>SIGN_SEED</code> sebagai server-only environment variable di Vercel/Manus. Nilai ini tidak pernah dibaca dari browser.</p></div><span className="banner-tag">ACTION NEEDED</span></div>}
-
-        <div className="metrics" aria-label="Ringkasan status">
-          <div className="metric-card"><span className="metric-label">BOT STATUS</span><div className="metric-value"><span className={`big-dot ${botReady ? "green" : "amber"}`} />{botReady ? "Ready" : "Setup required"}</div><span className="metric-note">{botReady ? "Identity loaded securely" : "Server secret belum tersedia"}</span></div>
-          <div className="metric-card"><span className="metric-label">TECHNOCORE</span><div className="metric-value"><span className={`big-dot ${connected ? "green" : "red"}`} />{connected ? "Connected" : "Unreachable"}</div><span className="metric-note">{connected ? `${status?.technocore.latencyMs ?? 0}ms response` : status?.technocore.error ?? "Menunggu pemeriksaan"}</span></div>
-          <div className="metric-card"><span className="metric-label">LAST NONCE</span><div className="metric-value mono">{status?.settings.lastNonce ?? "—"}</div><span className="metric-note">Naik untuk setiap signed message</span></div>
-        </div>
-
-        <div className="workspace-grid">
-          <div className="main-column">
-            <section className="panel identity-panel" id="identity"><div className="panel-heading"><div><span className="eyebrow">01 / PUBLIC IDENTITY</span><h3>Agent identity</h3></div><span className="panel-code">ED25519</span></div><div className="did-block"><span className="field-label">DID PUBLIC KEY</span><div className="did-row"><code>{shortDid(status?.did ?? null)}</code><button className="icon-button" onClick={copyDid} disabled={!status?.did} aria-label="Salin DID publik"><Icon name="copy" size={16} /></button></div><p>Identitas ini dapat dibagikan. Seed privat tidak pernah ditampilkan.</p></div><div className="identity-footer"><div><span className="field-label">NETWORK</span><strong>Technocore / lobby</strong></div><div><span className="field-label">SIGNING</span><strong><span className="mini-dot green" /> Server-side only</strong></div></div></section>
-
-            <section className="panel checkin-panel"><div className="panel-heading"><div><span className="eyebrow">02 / OUTBOUND SIGNAL</span><h3>Send check-in</h3></div><span className="panel-code">SIGNED GET</span></div><p className="panel-intro">Kirim pesan yang ditandatangani oleh DID agen ke room Technocore.</p><div className="form-row"><label><span className="field-label">ROOM</span><input value={room} onChange={(event) => setRoom(event.target.value)} placeholder="lobby" /></label><label className="grow"><span className="field-label">MESSAGE</span><input value={message} maxLength={4096} onChange={(event) => setMessage(event.target.value)} placeholder="FLOP agent check-in" /></label></div><div className="action-row"><span className="hint"><span className="mini-dot" /> Nonce otomatis dikelola server</span><button className="primary-button" onClick={runCheckIn} disabled={busy !== null || !botReady}><span>{busy === "checkin" ? "Signing & sending…" : "Run signed check-in"}</span><Icon name="arrow" size={16} /></button></div></section>
-
-            <section className="panel lobby-panel"><div className="panel-heading"><div><span className="eyebrow">03 / INBOUND SIGNAL</span><h3>Lobby pulse</h3></div><button className="text-button" onClick={refreshLobby} disabled={busy !== null}><Icon name="refresh" size={14} /> {busy === "lobby" ? "Refreshing" : "Refresh"}</button></div>{messages.length === 0 ? <div className="empty-state"><span className="empty-mark"><Icon name="terminal" size={22} /></span><strong>Belum ada pesan untuk ditampilkan</strong><p>Lobby kosong atau belum dapat dimuat dari Technocore.</p></div> : <div className="message-list">{messages.slice(-6).reverse().map((item) => <article className="message" key={item.id}><div className="message-avatar">{item.author.slice(0, 1).toUpperCase()}</div><div className="message-body"><div><strong>{item.author}</strong><time>{formatTime(item.timestamp)}</time></div><p>{item.text}</p></div></article>)}</div>}</section>
-          </div>
-
-          <aside className="right-column">
-            <section className="panel schedule-panel"><div className="panel-heading"><div><span className="eyebrow">AUTOMATION</span><h3>Scheduled check-in</h3></div><span className={`toggle-state ${scheduleEnabled ? "on" : ""}`}>{scheduleEnabled ? "ON" : "OFF"}</span></div><p className="panel-intro">Vercel Cron memanggil endpoint bot secara berkala. Eksekusi hanya berjalan saat toggle aktif.</p><button className={`toggle ${scheduleEnabled ? "active" : ""}`} onClick={() => void saveSchedule(!scheduleEnabled)} disabled={busy === "schedule"} aria-pressed={scheduleEnabled}><span className="toggle-knob" /><span>{scheduleEnabled ? "Automation active" : "Automation paused"}</span></button><label className="select-label"><span className="field-label">FREQUENCY</span><select value={schedule} onChange={(event) => setSchedule(event.target.value)}><option value="*/30 * * * *">Every 30 minutes</option><option value="0 * * * *">Every hour</option><option value="0 */6 * * *">Every 6 hours</option><option value="0 8 * * *">Daily · 08:00 UTC</option></select></label><div className="next-run"><span className="field-label">NEXT EXECUTION</span><strong><Icon name="clock" size={15} /> {scheduleCopy(schedule)}</strong></div><button className="secondary-button" onClick={() => void saveSchedule()} disabled={busy !== null}>{busy === "schedule" ? "Saving…" : "Save schedule"}</button></section>
-
-            <section className="panel security-panel"><div className="security-top"><div className="security-icon"><Icon name="shield" size={18} /></div><span className="eyebrow">SECURITY NOTE</span></div><h3>Keep the key, keep the identity.</h3><p><strong>DID bukan wallet address.</strong> Check-in juga tidak menjamin kelayakan atau pemberian $FLOP airdrop.</p><div className="security-rule" /><span className="security-foot"><Icon name="check" size={14} /> Seed tidak pernah dikirim ke client</span></section>
-
-            <section className="panel connection-panel"><span className="eyebrow">SERVICE LINK</span><div className="service-line"><span className={`service-status ${connected ? "connected" : ""}`} /><div><strong>technocore.chat</strong><small>{connected ? "Operational · public endpoint" : "Health check failed"}</small></div><Icon name="arrow" size={15} /></div></section>
-          </aside>
-        </div>
-
-        <section className="panel activity-panel" id="activity"><div className="panel-heading"><div><span className="eyebrow">04 / AUDIT TRAIL</span><h3>Recent activity</h3></div><span className="panel-code">NO SECRETS LOGGED</span></div>{lastActivity.length === 0 ? <div className="activity-empty">Belum ada aktivitas. Check-in pertama akan muncul di sini.</div> : <div className="activity-list">{lastActivity.map((item) => <div className="activity-row" key={item.id}><span className={`activity-icon ${item.status}`}><Icon name={item.status === "success" ? "check" : item.status === "error" ? "alert" : "clock"} size={14} /></span><div className="activity-copy"><strong>{item.eventType}</strong><span>{item.summary}</span></div><time>{formatTime(item.createdAt)}</time><span className={`activity-status ${item.status}`}>{item.status}</span></div>)}</div>}</section>
-
-        <IssueLog />
-        <footer className="footer"><span>FLOP // BOT CONTROL CENTER</span><span>Server-side signing · No wallet custody · No airdrop guarantee</span></footer>
-      </section>
-      {toast && <div className={`toast ${toast.type}`} role="status"><span className="toast-icon"><Icon name={toast.type === "success" ? "check" : "alert"} size={15} /></span>{toast.text}</div>}
-    </main>
-  );
+  return <main className="shell">
+    <aside className="sidebar"><div className="brand"><span className="brand-mark"><span /></span><span>FLOP <b>//</b> BOT</span></div><div className="side-caption">AGENT CONTROL / 01</div><nav className="nav" aria-label="Navigasi dashboard">{navItems.map((item) => <button key={item.id} className={`nav-item ${view === item.id ? "active" : ""}`} onClick={() => navigate(item.id)}><Icon name={item.icon} size={16} /> {item.label}</button>)}</nav><div className="sidebar-bottom"><div className="live-chip"><span className="live-dot" /> SYSTEM ONLINE</div><p>Bot bekerja melalui signed HTTP request. Secret tetap berada di server.</p><div className="version"><span>v0.2 MVP</span><span>NETLIFY / VERCEL</span></div></div></aside>
+    <section className="content"><header className="topbar"><div><span className="eyebrow">FLOP LABS / TECHNОCORE</span><h1>Agent control center</h1></div><div className="topbar-meta"><span className={`status-pill ${connected ? "ok" : "warn"}`}><span className="status-dot" /> {connected ? "Technocore connected" : "Connection check"}</span><span className="utc">UTC · {new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(new Date())}</span></div></header><div className="view-heading"><div><span className="kicker">{activeMeta.eyebrow}</span><h2>{activeMeta.title}</h2><p>{activeMeta.description}</p></div><div className="view-index">{String(navItems.findIndex((item) => item.id === view) + 1).padStart(2, "0")} <span>/ 06</span></div></div>
+      {view === "overview" && <><div className="hero-line"><div><p className="kicker">YOUR AGENT, VISIBLE.</p><h2>Semua sinyal penting,<br /><em>di satu tempat.</em></h2><p className="hero-copy">Pantau identitas agen, kirim check-in yang ditandatangani, dan lihat aktivitas Technocore tanpa menyentuh secret key.</p></div><div className="hero-readout"><span>CONTROL STATUS</span><strong>{botReady ? "READY" : "SETUP REQUIRED"}</strong><small>{botReady ? "Seed server terhubung" : "Tambahkan SIGN_SEED di environment"}</small></div></div>{setupBanner}{metrics}<div className="overview-grid"><section className="panel overview-card"><span className="eyebrow">QUICK ROUTES</span><h3>Choose a work area</h3><p>Pilih opsi di sidebar untuk membuka satu bagan tanpa menumpuk semua panel dalam satu frame.</p><div className="quick-actions">{navItems.slice(1).map((item) => <button key={item.id} onClick={() => navigate(item.id)}><Icon name={item.icon} size={15} /><span>{item.label}</span><Icon name="arrow" size={14} /></button>)}</div></section>{securityPanel}</div></>}
+      {view === "identity" && <><div className="section-banner">{setupBanner}</div><div className="view-grid two-col">{identityPanel}{checkinPanel}</div></>}
+      {view === "lobby" && <div className="single-panel">{lobbyPanel}</div>}
+      {view === "automation" && <div className="view-grid automation-grid">{schedulePanel}{securityPanel}{connectionPanel}</div>}
+      {view === "activity" && <div className="single-panel">{activityPanel}</div>}
+      {view === "issues" && <div className="single-panel"><IssueLog /></div>}
+      <footer className="footer"><span>FLOP // BOT CONTROL CENTER</span><span>Server-side signing · No wallet custody · No airdrop guarantee</span></footer>
+    </section>
+    {toast && <div className={`toast ${toast.type}`} role="status"><span className="toast-icon"><Icon name={toast.type === "success" ? "check" : "alert"} size={15} /></span>{toast.text}</div>}
+  </main>;
 }
