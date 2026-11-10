@@ -277,11 +277,11 @@ Itu berarti `DATABASE_URL` belum tersedia atau database tidak dapat diakses sehi
 
 Pastikan automation di dashboard berstatus **ON**, `SIGN_SEED` tersedia di Production, `vercel.json` ikut ter-commit, dan deployment terbaru sudah aktif. Periksa tab Cron/Logs di Vercel.
 
-## Issue Log dan report `.txt`
+## Issue Log dan report `.txt` / `.md`
 
 Bagian **Issue log & reports** dipakai untuk mencatat temuan devnet secara terstruktur. Form mencakup judul, severity, kategori, network, ringkasan, langkah reproduksi, expected result, actual result, dampak, transaction hash, request ID, dan catatan tambahan.
 
-Setiap issue disimpan di tabel `bot_issues` bersama isi report yang sudah diformat. Tombol **Download .txt** memanggil endpoint `/api/issues/:id` dan menghasilkan file `flop-issue-<id>.txt` kapan saja. Isi report disimpan di database, bukan filesystem Function, karena filesystem serverless Vercel bersifat sementara.
+Setiap issue disimpan di tabel `bot_issues` bersama isi report yang sudah diformat. Tombol **TXT** menghasilkan file `flop-issue-<id>.txt`, sedangkan tombol **MD** menghasilkan Markdown yang siap ditempel ke GitHub Issue, private advisory, atau dokumen audit. Isi report disimpan di database, bukan filesystem Function, karena filesystem serverless Vercel bersifat sementara.
 
 Sebelum disimpan, aplikasi meredaksi pola token GitHub, API key, `SIGN_SEED`, `PRIVATE_KEY`, `SECRET`, `BEARER`, dan blok PEM. Redaksi ini adalah lapisan pengaman tambahan, bukan alasan untuk menempelkan secret ke form. Jangan memasukkan private key atau bearer token ke issue report.
 
@@ -290,7 +290,8 @@ Endpoint yang tersedia:
 ```text
 GET  /api/issues       # daftar issue terbaru
 POST /api/issues       # membuat issue dan report
-GET  /api/issues/:id   # mengunduh report sebagai text/plain
+GET  /api/issues/:id           # mengunduh report TXT sebagai text/plain
+GET  /api/issues/:id?format=md # mengunduh report Markdown sebagai text/markdown
 ```
 
 Untuk bug yang berpotensi memengaruhi consensus, verifikasi, ekonomi, escrow, HTLC, data availability, atau keamanan wallet, jangan mengunggah report ke issue publik terlebih dahulu. Simpan file `.txt`, lalu kirim melalui kanal security resmi FLOP sesuai kebijakan disclosure mereka.

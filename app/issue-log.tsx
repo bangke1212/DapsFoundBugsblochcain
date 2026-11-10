@@ -32,19 +32,19 @@ export default function IssueLog() {
       const response = await fetch("/api/issues", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
       const data = await response.json() as { ok?: boolean; error?: string; issue?: Issue };
       if (!response.ok || !data.ok) throw new Error(data.error ?? "Issue gagal disimpan.");
-      setForm(initialForm); setOpen(false); setNotice(`Issue #${data.issue?.id ?? ""} tersimpan sebagai report TXT.`); await loadIssues();
+      setForm(initialForm); setOpen(false); setNotice(`Issue #${data.issue?.id ?? ""} tersimpan sebagai report TXT + Markdown.`); await loadIssues();
     } catch (error) { setNotice(error instanceof Error ? error.message : "Issue gagal disimpan."); } finally { setBusy(null); }
   };
 
-  const download = async (id: number) => {
-    const response = await fetch(`/api/issues/${id}`);
+  const download = async (id: number, format: "txt" | "md") => {
+    const response = await fetch(`/api/issues/${id}${format === "md" ? "?format=md" : ""}`);
     if (!response.ok) { setNotice("File report tidak ditemukan."); return; }
-    const blob = await response.blob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `flop-issue-${id}.txt`; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+    const blob = await response.blob(); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `flop-issue-${id}.${format}`; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
   };
 
   return <section className="panel issue-panel" id="issues">
-    <div className="panel-heading"><div><span className="eyebrow">05 / FINDINGS LOG</span><h3>Issue log &amp; reports</h3></div><span className="panel-code">TXT READY</span></div>
-    <p className="panel-intro">Catat temuan devnet secara terstruktur. Isi report disimpan di database dan dapat diunduh sebagai `.txt` kapan saja.</p>
+    <div className="panel-heading"><div><span className="eyebrow">05 / FINDINGS LOG</span><h3>Issue log &amp; reports</h3></div><span className="panel-code">TXT + MD</span></div>
+    <p className="panel-intro">Catat temuan devnet secara terstruktur. Isi report disimpan di database dan dapat diunduh sebagai `.txt` atau `.md` kapan saja.</p>
     <div className="issue-toolbar"><div className="issue-counter"><strong>{issues.length}</strong><span>saved findings</span></div><button className="primary-button" onClick={() => setOpen((value) => !value)}>{open ? "Close form" : "+ Log new issue"}</button></div>
     {notice && <div className="issue-notice" role="status">{notice}</div>}
     {open && <div className="issue-form">
@@ -57,6 +57,6 @@ export default function IssueLog() {
       <label><span className="field-label">ADDITIONAL NOTES</span><textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} placeholder="Version, timestamps, environment, or extra evidence." /></label>
       <div className="issue-form-footer"><span className="hint"><span className="mini-dot green" /> Private keys and tokens are redacted</span><button className="primary-button" onClick={() => void save()} disabled={busy !== null}>{busy === "save" ? "Saving report…" : "Save issue + report TXT"}</button></div>
     </div>}
-    {issues.length === 0 ? <div className="issue-empty"><span>No findings saved yet.</span><small>Start a reproducible test and log the first issue here.</small></div> : <div className="issue-list">{issues.slice(0, 8).map((issue) => <div className="issue-row" key={issue.id}><div className={`severity-mark ${issue.severity}`} /><div className="issue-copy"><strong>#{issue.id} · {issue.title}</strong><span>{issue.category} · {issue.network} · {formatDate(issue.createdAt)}</span></div><span className={`issue-badge ${issue.severity}`}>{issue.severity}</span><button className="text-button" onClick={() => void download(issue.id)}>Download .txt</button></div>)}</div>}
+    {issues.length === 0 ? <div className="issue-empty"><span>No findings saved yet.</span><small>Start a reproducible test and log the first issue here.</small></div> : <div className="issue-list">{issues.slice(0, 8).map((issue) => <div className="issue-row" key={issue.id}><div className={`severity-mark ${issue.severity}`} /><div className="issue-copy"><strong>#{issue.id} · {issue.title}</strong><span>{issue.category} · {issue.network} · {formatDate(issue.createdAt)}</span></div><span className={`issue-badge ${issue.severity}`}>{issue.severity}</span><div className="download-actions"><button className="text-button" onClick={() => void download(issue.id, "txt")}>TXT</button><button className="text-button" onClick={() => void download(issue.id, "md")}>MD</button></div></div>)}</div>}
   </section>;
 }

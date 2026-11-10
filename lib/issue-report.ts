@@ -42,3 +42,45 @@ export function buildIssueReport(input: NewIssue, createdAt = new Date().toISOSt
     "",
   ].join("\n");
 }
+
+export function buildIssueMarkdown(input: NewIssue, createdAt = new Date().toISOString()) {
+  const value = (text: string) => redact(text || "Not provided");
+  return [
+    "# FLOP Devnet Sentinel — Issue Report",
+    "",
+    `- **Generated:** ${createdAt}`,
+    "- **Reporter:** FLOP Devnet Sentinel",
+    `- **Network:** ${value(input.network)}`,
+    `- **Severity:** ${value(input.severity)}`,
+    `- **Category:** ${value(input.category)}`,
+    "",
+    `## ${value(input.title)}`,
+    "",
+    "### Summary",
+    value(input.summary),
+    "",
+    "### Steps to reproduce",
+    "```text",
+    value(input.steps),
+    "```",
+    "",
+    "### Expected result",
+    value(input.expected),
+    "",
+    "### Actual result",
+    value(input.actual),
+    "",
+    "### Impact / risk",
+    value(input.impact),
+    "",
+    "### Evidence",
+    `- **Transaction hash:** ${value(input.txHash)}`,
+    `- **Request ID:** ${value(input.requestId)}`,
+    "",
+    "### Additional notes",
+    value(input.notes),
+    "",
+    "> Safety note: this report excludes private keys, seeds, bearer tokens, and raw secrets. Submit security-sensitive findings through the official private security channel.",
+    "",
+  ].join("\n");
+}
