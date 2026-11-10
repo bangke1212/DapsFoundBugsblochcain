@@ -1,44 +1,42 @@
-CREATE TABLE IF NOT EXISTS bot_settings (
-  id TINYINT PRIMARY KEY,
-  schedule_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-  schedule_expression VARCHAR(64) NOT NULL DEFAULT '*/30 * * * *',
-  room VARCHAR(48) NOT NULL DEFAULT 'lobby',
-  checkin_message VARCHAR(4096) NOT NULL DEFAULT 'FLOP agent check-in',
-  last_nonce BIGINT NOT NULL DEFAULT 0,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+
+CREATE TABLE IF NOT EXISTS custom_networks (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(128) NOT NULL UNIQUE,
+  rpc_url VARCHAR(512) NOT NULL,
+  chain_id BIGINT NOT NULL,
+  native_symbol VARCHAR(24) NOT NULL,
+  explorer_url VARCHAR(512) NOT NULL DEFAULT '',
+  router_address VARCHAR(128) NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS bot_activity (
+CREATE TABLE IF NOT EXISTS auto_swap_jobs (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  event_type VARCHAR(64) NOT NULL,
-  status VARCHAR(16) NOT NULL,
-  summary VARCHAR(1000) NOT NULL,
-  nonce BIGINT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX activity_created_at_idx (created_at)
-);
-
-INSERT IGNORE INTO bot_settings (id, schedule_enabled, schedule_expression, room, checkin_message)
-VALUES (1, FALSE, '*/30 * * * *', 'lobby', 'FLOP agent check-in');
-
-CREATE TABLE IF NOT EXISTS bot_issues (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  severity VARCHAR(24) NOT NULL,
-  category VARCHAR(64) NOT NULL,
-  network VARCHAR(128) NOT NULL,
-  summary TEXT NOT NULL,
-  steps TEXT NOT NULL,
-  expected TEXT NOT NULL,
-  actual TEXT NOT NULL,
-  impact TEXT NOT NULL,
-  tx_hash VARCHAR(255) NOT NULL DEFAULT '',
-  request_id VARCHAR(255) NOT NULL DEFAULT '',
-  notes TEXT NOT NULL,
-  issue_status VARCHAR(24) NOT NULL DEFAULT 'ready',
-  report_text MEDIUMTEXT NOT NULL,
+  network_id BIGINT NOT NULL,
+  token_in VARCHAR(128) NOT NULL,
+  token_out VARCHAR(128) NOT NULL,
+  amount DECIMAL(36,18) NOT NULL,
+  repeats TINYINT NOT NULL DEFAULT 5,
+  completed TINYINT NOT NULL DEFAULT 0,
+  cooldown_seconds INT NOT NULL DEFAULT 3600,
+  slippage_bps INT NOT NULL DEFAULT 50,
+  execution_mode VARCHAR(16) NOT NULL DEFAULT 'dry-run',
+  job_status VARCHAR(16) NOT NULL DEFAULT 'armed',
+  next_run_at TIMESTAMP NULL,
+  last_tx_hash VARCHAR(255) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX issue_created_at_idx (created_at),
-  INDEX issue_severity_idx (severity)
+  INDEX auto_swap_due_idx (job_status, next_run_at)
+);
+
+CREATE TABLE IF NOT EXISTS auto_swap_executions (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  job_id BIGINT NOT NULL,
+  attempt TINYINT NOT NULL,
+  execution_status VARCHAR(16) NOT NULL,
+  tx_hash VARCHAR(255) NULL,
+  message VARCHAR(1000) NOT NULL,
+  executed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX auto_swap_execution_job_idx (job_id, executed_at)
 );

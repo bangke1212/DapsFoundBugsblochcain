@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import IssueLog from "@/app/issue-log";
+import AutoSwap from "@/app/auto-swap";
 
 type Activity = { id: number; eventType: string; status: "success" | "error" | "info"; summary: string; nonce: number | null; createdAt: string };
 type Message = { id: string; author: string; text: string; timestamp: string | null; sequence: number | null };
@@ -93,7 +94,7 @@ export default function Home() {
       {view === "overview" && <><div className="hero-line"><div><p className="kicker">YOUR AGENT, VISIBLE.</p><h2>Semua sinyal penting,<br /><em>di satu tempat.</em></h2><p className="hero-copy">Pantau identitas agen, kirim check-in yang ditandatangani, dan lihat aktivitas Technocore tanpa menyentuh secret key.</p></div><div className="hero-readout"><span>CONTROL STATUS</span><strong>{botReady ? "READY" : "SETUP REQUIRED"}</strong><small>{botReady ? "Seed server terhubung" : "Tambahkan SIGN_SEED di environment"}</small></div></div>{setupBanner}{metrics}<div className="overview-grid"><section className="panel overview-card"><span className="eyebrow">QUICK ROUTES</span><h3>Choose a work area</h3><p>Pilih opsi di sidebar untuk membuka satu bagan tanpa menumpuk semua panel dalam satu frame.</p><div className="quick-actions">{navItems.slice(1).map((item) => <button key={item.id} onClick={() => navigate(item.id)}><Icon name={item.icon} size={15} /><span>{item.label}</span><Icon name="arrow" size={14} /></button>)}</div></section>{securityPanel}</div></>}
       {view === "identity" && <><div className="section-banner">{setupBanner}</div><div className="view-grid two-col">{identityPanel}{checkinPanel}</div></>}
       {view === "lobby" && <div className="single-panel">{lobbyPanel}</div>}
-      {view === "automation" && <div className="view-grid automation-grid">{schedulePanel}{securityPanel}{connectionPanel}</div>}
+      {view === "automation" && <><AutoSwap /><div className="view-grid automation-grid">{schedulePanel}{securityPanel}{connectionPanel}</div></>}
       {view === "activity" && <div className="single-panel">{activityPanel}</div>}
       {view === "issues" && <div className="single-panel"><IssueLog /></div>}
       <footer className="footer"><span>FLOP // BOT CONTROL CENTER</span><span>Server-side signing · No wallet custody · No airdrop guarantee</span></footer>
