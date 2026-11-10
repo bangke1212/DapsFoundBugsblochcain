@@ -1,5 +1,5 @@
 {
   "routes": [
-    { "path": "/", "title": "Dashboard" }
+    { "path": "/", "title": "Dashboard · FLOP Devnet" }
   ]
 }

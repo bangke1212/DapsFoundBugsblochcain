@@ -19,3 +19,6 @@
 - [ ] **Peringatan keamanan yang terlihat jelas bahwa DID bukan wallet dan check-in tidak menjamin airdrop.** Peringatan harus hadir di dashboard tanpa klaim kelayakan token.
 
 - [ ] **Issue Log dan Issue Report `.txt`.** Pengguna dapat mencatat judul, severity, kategori, network, langkah reproduksi, expected/actual result, dampak, hash transaksi, request ID, dan catatan; laporan disimpan durable di database, secret otomatis direda​​ksi, dan file `.txt` dapat diunduh kapan saja.
+
+- [ ] **Koneksi FLOP Devnet server-side.** Dashboard harus memverifikasi faucet metadata, RPC `chain_getBlockHash(0)`, dan genesis resmi `0x99c172c095340ace980631f9123544c6bebd4839f3437e463533422d8be2d631`; UI menampilkan RPC HTTP/WSS, gateway, CAIP-2, model catalog, dan kesiapan DID tanpa menampilkan seed.
+- [ ] **Batas sign-in FLOP harus dijelaskan dengan benar.** Signed check-in Technocore tidak boleh disebut login atau transaksi on-chain FLOP; endpoint login publik hanya ditambahkan jika diterbitkan dalam dokumentasi resmi.

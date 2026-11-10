@@ -74,3 +74,9 @@ Wordmark `FLOP // BOT` dengan slash ganda sebagai simbol jalur pesan dan titik h
 - DID ditampilkan karena bersifat publik; seed dan signature mentah tidak ditampilkan.
 - Check-in bukan klaim airdrop dan DID bukan wallet; peringatan ini selalu terlihat.
 - Database managed dipakai bersama development/publikasi; schema additive dan non-destructive.
+
+## Integrasi FLOP Devnet
+- `lib/flop-devnet.ts` memverifikasi faucet metadata, `chain_getBlockHash(0)`, genesis resmi, gateway model catalog, dan kesiapan DID tanpa membocorkan seed.
+- `app/api/flop/status/route.ts` menjadi server-only proxy untuk status FLOP; browser hanya menerima status yang sudah diringkas.
+- `app/flop-devnet.tsx` menampilkan endpoint RPC HTTP/WSS, CAIP-2, kecocokan genesis, jumlah model, dan perbedaan antara Technocore signed check-in dengan login on-chain.
+- Aplikasi tidak mengarang endpoint login FLOP karena dokumentasi resmi belum menerbitkan sign-in publik terpisah. Integrasi transaksi atau direct inference harus memakai SDK/flow resmi setelah kredensial dan akses devnet tersedia.
