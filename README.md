@@ -5,7 +5,7 @@
 Menu **Automation** sekarang memiliki Auto Swap Safe Runner untuk membuat job berulang dengan guardrail tetap:
 
 - Maksimal dan wajib **5 transaksi per job**.
-- Cooldown wajib **1 jam / 3600 detik**.
+- Cooldown dapat dipilih **1 jam, 6 jam, atau 12 jam** (masing-masing 3600, 21600, atau 43200 detik).
 - Custom network adder dengan nama, RPC URL, chain ID, symbol native, explorer URL, dan router address.
 - Validasi RPC hanya menerima `http(s)` tanpa username, password, atau query secret.
 - Mode default dan satu-satunya mode operasional saat ini adalah **dry-run**.
